@@ -13,6 +13,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from stable_baselines3.common.evaluation import evaluate_policy
 
+log_path = os.path.join('training', 'logs')
+
 # Load environment
 
 ENV_NAME = 'CartPole-v0'
@@ -48,3 +50,29 @@ for episode in range(1, NUM_EPISODES+1):
     print(f'Episode: {episode}, Score: {score}')
 
 env.close()
+
+env = DummyVecEnv([lambda: env])
+
+RETRAIN_MODEL = False
+
+if RETRAIN_MODEL:
+
+    POLICY = 'MlpPolicy'  # Multilayer perceptron without LSTM and CNNs
+    model = PPO(POLICY, env, verbose=1, tensorboard_log=log_path)
+
+    NUM_TIMESTEPS = 20000
+    model.learn(NUM_TIMESTEPS)
+
+    # Save model
+    model_path = os.path.join('training', 'models', 'PPO_MODEL_CARTPOLE')
+    model.save(model_path)
+
+    # Delete model, just for the practice of reloading it again down below
+    del model
+
+model = PPO.load(model_path, env=env)
+
+# Evaluate model
+
+NUM_EVAL_EPISODES = 10
+evaluate_policy(model, env, n_eval_episodes=NUM_EVAL_EPISODES, render=True)
