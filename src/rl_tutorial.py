@@ -13,9 +13,14 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from stable_baselines3.common.evaluation import evaluate_policy
 
+# Callback helpers
+from stable_baselines3.common.callbacks import \
+    EvalCallback, StopTrainingOnRewardThreshold
+
 # Define paths
 
 log_path = os.path.join('training', 'logs')
+save_path = os.path.join('training', 'models')
 model_path = os.path.join('training', 'models', 'PPO_MODEL_CARTPOLE')
 
 # Load environment
@@ -26,15 +31,28 @@ env = DummyVecEnv([lambda: env])
 
 # Retrain model if desired
 
-RETRAIN_MODEL = False
+RETRAIN_MODEL = True
 
 if RETRAIN_MODEL:
+
+    # This callback will stop training once we pass a particular reward
+    # threshold
+    stop_callback = StopTrainingOnRewardThreshold(reward_threshold=200,
+                                                  verbose=1)
+
+    # This callback will be run at the end of each training run. eval_freq is
+    # saying we want to run the eval callback every 10k timesteps.
+    eval_callback = EvalCallback(env,
+                                 callback_on_new_best=stop_callback,
+                                 eval_freq=10000,
+                                 best_model_save_path=save_path,
+                                 verbose=1)
 
     POLICY = 'MlpPolicy'  # Multilayer perceptron without LSTM and CNNs
     model = PPO(POLICY, env, verbose=1, tensorboard_log=log_path)
 
     NUM_TIMESTEPS = 20000
-    model.learn(NUM_TIMESTEPS)
+    model.learn(NUM_TIMESTEPS, callback=eval_callback)
 
     # Save model
     model.save(model_path)
