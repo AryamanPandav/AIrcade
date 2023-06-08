@@ -13,45 +13,18 @@ from stable_baselines3.common.vec_env import DummyVecEnv
 
 from stable_baselines3.common.evaluation import evaluate_policy
 
+# Define paths
+
 log_path = os.path.join('training', 'logs')
+model_path = os.path.join('training', 'models', 'PPO_MODEL_CARTPOLE')
 
 # Load environment
 
 ENV_NAME = 'CartPole-v0'
 env = gym.make(ENV_NAME)
-
-# An episode is like one full "game" within an environment
-NUM_EPISODES = 5
-for episode in range(1, NUM_EPISODES+1):
-
-    # Returns the initial set of observations for our environment. For the
-    # CartPole-v0 environment, there are 4 values defining the environment.
-    state = env.reset()
-    done = False
-    score = 0
-
-    while not done:
-
-        # View the graphical representation of the environment
-        env.render()
-
-        # Generate a random action. The action space is the space of all
-        # possible actions. This is a discrete action space with two actions,
-        # moving the cart left or right.
-        action = env.action_space.sample()
-
-        # Taking an action results in more observations, a reward, and whether
-        # the episode is complete
-        n_state, reward, done, info = env.step(action)
-
-        # Accumulating the reward
-        score += reward
-
-    print(f'Episode: {episode}, Score: {score}')
-
-env.close()
-
 env = DummyVecEnv([lambda: env])
+
+# Retrain model if desired
 
 RETRAIN_MODEL = False
 
@@ -64,11 +37,12 @@ if RETRAIN_MODEL:
     model.learn(NUM_TIMESTEPS)
 
     # Save model
-    model_path = os.path.join('training', 'models', 'PPO_MODEL_CARTPOLE')
     model.save(model_path)
 
     # Delete model, just for the practice of reloading it again down below
     del model
+
+# Load model
 
 model = PPO.load(model_path, env=env)
 
@@ -76,3 +50,40 @@ model = PPO.load(model_path, env=env)
 
 NUM_EVAL_EPISODES = 10
 evaluate_policy(model, env, n_eval_episodes=NUM_EVAL_EPISODES, render=True)
+
+# Test model
+
+# An episode is like one full "game" within an environment
+NUM_EPISODES = 5
+for episode in range(1, NUM_EPISODES+1):
+
+    # Returns the initial set of observations for our environment. For the
+    # CartPole-v0 environment, there are 4 values defining the environment.
+    observation = env.reset()
+    done = False
+    score = 0
+
+    while not done:
+
+        # View the graphical representation of the environment
+        env.render()
+
+        # Generate a random action. The action space is the space of all
+        # possible actions. This is a discrete action space with two actions,
+        # moving the cart left or right.
+        # action = env.action_space.sample()
+
+        # Use the model to predict the next action. The next state is used in
+        # recurrent policies, which we're not using in this example.
+        action, _states = model.predict(observation)
+
+        # Taking an action results in more observations, a reward, and whether
+        # the episode is complete
+        observation, reward, done, info = env.step(action)
+
+        # Accumulating the reward
+        score += reward
+
+    print(f'Episode: {episode}, Score: {score}')
+
+env.close()
