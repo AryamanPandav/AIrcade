@@ -29,6 +29,13 @@ ENV_NAME = 'CartPole-v0'
 env = gym.make(ENV_NAME)
 env = DummyVecEnv([lambda: env])
 
+# Define custom neural network architecture to test
+
+USE_CUSTOM_ARCHITECTURE = True
+
+# 4 layers with 128 units; vf = value function, unsure what pi stands for
+custom_arch = [dict(pi=[128,128,128,128], vf=[128,128,128,128])]
+
 # Retrain model if desired
 
 RETRAIN_MODEL = True
@@ -49,7 +56,14 @@ if RETRAIN_MODEL:
                                  verbose=1)
 
     POLICY = 'MlpPolicy'  # Multilayer perceptron without LSTM and CNNs
-    model = PPO(POLICY, env, verbose=1, tensorboard_log=log_path)
+    if USE_CUSTOM_ARCHITECTURE:
+        model = PPO(POLICY,
+                    env,
+                    verbose=1,
+                    tensorboard_log=log_path,
+                    policy_kwargs={'net_arch':custom_arch})
+    else:
+        model = PPO(POLICY, env, verbose=1, tensorboard_log=log_path)
 
     NUM_TIMESTEPS = 20000
     model.learn(NUM_TIMESTEPS, callback=eval_callback)
